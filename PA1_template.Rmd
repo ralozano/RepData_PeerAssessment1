@@ -5,21 +5,123 @@ output:
     keep_md: true
 ---
 
+Loading the data and showing a summary of them and type of data
 
-## Loading and preprocessing the data
+```{r, echo = TRUE}
+activity <- read.csv("activity.csv",na.strings="NA")
+summary(activity)
+sapply(activity,class)
+```
 
+The field date is a factor which leves depends of each day of measurement
 
+```{r, echo = TRUE}
+levels(activity$date)
+````
 
-## What is mean total number of steps taken per day?
+## Total number of steps taken per day
 
+Using the library dplyr for grouping the data by day
 
+```{r, echo = TRUE}
+library(dplyr)
+by_day <- group_by(activity, date)
+steps_by_day <- summarise(by_day, steps = sum(steps, na.rm = TRUE))
+steps_by_day
+```
 
-## What is the average daily activity pattern?
+We plot the frequency of steps by day in a histogram way:
 
+```{r, echo = TRUE}
+hist(steps_by_day$steps)
+```
 
+Calculating mean and median of the total number of steps taken per day
+
+```{r, echo = TRUE}
+s1 <- summarise(steps_by_day, mean = mean(steps, na.rm = TRUE), median = median(steps, na.rm = TRUE))
+s1
+```
+
+Therefore the mean of steps by day is `r s1$mean` and the median is `r s1$median`.
+
+## Average daily activity pattern
+
+To answer, we grup the data by interval and we take the average steps
+
+```{r, echo = TRUE}
+by_interval <- group_by(activity, interval)
+avg_steps_by_interval <- summarise(by_interval, average = mean(steps, na.rm = TRUE))
+avg_steps_by_interval
+```
+
+Ploting the average steps in each inetrval
+
+```{r, echo = TRUE}
+plot(avg_steps_by_interval$interval,avg_steps_by_interval$average, type = "l")
+maxi <- max(avg_steps_by_interval$average)
+interval <- avg_steps_by_interval[avg_steps_by_interval$average == maxi, 1]
+```
+
+The maximum average steps in an interval is `r maxi` and the correspondant interval is `r interval`
 
 ## Imputing missing values
 
+```{r, echo = TRUE}
+rows1 <- nrow(activity) 
+rows2 <- nrow(activity[activity$steps == "NA",])
+```
+
+The number of rows in the activity data set is `r rows1` and the total number of records with missing values is `r rows2`. The next step is filling the missing values with the avereage of the interval
+
+```{r, echo = TRUE}
+activity2 <- mutate(activity, steps = replace(activity$steps, is.na(activity$steps), avg_steps_by_interval[avg_steps_by_interval$interval == c(0,5),]$average))
+head(activity)
+head(activity2)
+by_day2 <- group_by(activity2, date)
+steps_by_day2 <- summarise(by_day2, steps = sum(steps, na.rm = TRUE))
+steps_by_day2
+```
+
+We plot the frequency of steps by day in a histogram for the new data set:
+
+```{r, echo = TRUE}
+hist(steps_by_day2$steps)
+```
+
+Calculating mean and median of the total number of steps taken per day
+
+```{r, echo = TRUE}
+s2 <- summarise(steps_by_day2, mean = mean(steps, na.rm = TRUE), median = median(steps, na.rm = TRUE))
+s2
+```
+
+Therefore the mean of steps by day is `r s2$mean` and the median is `r s2$median` there is not a significant difference with the original data set
+
+## Differences in activity patterns between weekdays and weekends
+
+Creating the factor variable indicating weekdays and weekend days
+
+```{r, echo = TRUE}
+wday <- as.POSIXlt(activity$date)$wday
+activity3 <- mutate(activity, wday = factor(sapply(wday, function (w) if (w  == 0 | w == 6) 0 else 1 ), levels=c (0,1), labels = c("weekend", "weekday")))
+```
+
+```{r, echo = TRUE}
+by_interval3 <- group_by(activity3, wday ,interval)
+avg_steps_by_interval3 <- summarise(by_interval3, average = mean(steps, na.rm = TRUE))
+```
+
+Ploting the average steps in each inetrval for ecah factor 
+
+```{r, echo = TRUE}
+par(mfrow = c(2, 1))
+with(avg_steps_by_interval3, {
+   plot(average ~ interval, data = avg_steps_by_interval3[wday == "weekend", ], type = "l", main = "weekend")
+   plot(average ~ interval, data = avg_steps_by_interval3[wday == "weekday", ], type = "l", main = "weekday")
+   })
+```
+
+As the grpah shows, saturday and sunday are more intenses in the number of steps.
 
 
-## Are there differences in activity patterns between weekdays and weekends?
